@@ -31,6 +31,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
@@ -124,7 +125,8 @@ public class BasicInterpreterTests {
     this.resultType = resultType;
   }
 
-  protected void assertEqualsSOMValue(final Object expectedResult, final Object actualResult) {
+  protected void assertEqualsSOMValue(final Object expectedResult, final Object actualResult,
+      final SClass sclass) {
     if (resultType == Long.class) {
       long expected = (int) expectedResult;
       long actual = (long) actualResult;
@@ -141,7 +143,7 @@ public class BasicInterpreterTests {
 
     if (resultType == SClass.class) {
       String expected = (String) expectedResult;
-      String actual = ((SClass) actualResult).getName().getString();
+      String actual = sclass.getName((DynamicObject) actualResult).getString();
       assertEquals(expected, actual);
       return;
     }
@@ -165,7 +167,8 @@ public class BasicInterpreterTests {
 
     PolyglotEngine engine = builder.build();
     Value actualResult = engine.eval(SomLanguage.START);
+    SClass sclass = engine.findGlobalSymbol(SomLanguage.UNIVERSE).as(SClass.class);
 
-    assertEqualsSOMValue(expectedResult, actualResult.as(Object.class));
+    assertEqualsSOMValue(expectedResult, actualResult.as(Object.class), sclass);
   }
 }

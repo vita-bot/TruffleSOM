@@ -1,6 +1,7 @@
 package som.vmobjects;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.object.DynamicObject;
 
 import som.interpreter.SomLanguage;
 import som.interpreter.Types;
@@ -9,16 +10,17 @@ import som.vm.Universe;
 
 public abstract class SAbstractObject {
 
-  public abstract SClass getSOMClass(Universe universe);
+  public abstract DynamicObject getSOMClass(Universe universe);
 
   @Override
   public String toString() {
     CompilerAsserts.neverPartOfCompilation();
-    SClass clazz = getSOMClass(SomLanguage.getCurrentContext());
+    Universe universe = SomLanguage.getCurrentContext();
+    DynamicObject clazz = getSOMClass(universe);
     if (clazz == null) {
       return "an Object(clazz==null)";
     }
-    return "a " + clazz.getName().getString();
+    return "a " + universe.sclass.getName(clazz).getString();
   }
 
   public static final Object send(
@@ -28,7 +30,8 @@ public abstract class SAbstractObject {
     SSymbol selector = universe.symbolFor(selectorString);
 
     // Lookup the invokable
-    SInvokable invokable = Types.getClassOf(arguments[0], universe).lookupInvokable(selector);
+    SInvokable invokable =
+        universe.sclass.lookupInvokable(Types.getClassOf(arguments[0], universe), selector);
 
     return invokable.invoke(arguments);
   }

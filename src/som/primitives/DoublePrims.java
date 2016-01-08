@@ -2,11 +2,11 @@ package som.primitives;
 
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.object.DynamicObject;
 
 import som.interpreter.nodes.nary.UnaryExpressionNode;
 import som.primitives.SystemPrims.UnarySystemNode;
 import som.vm.Universe;
-import som.vmobjects.SClass;
 
 
 public abstract class DoublePrims {
@@ -34,7 +34,7 @@ public abstract class DoublePrims {
     }
 
     @Specialization(guards = "receiver == universe.doubleClass")
-    public final double doSClass(final SClass receiver) {
+    public final double doSClass(final DynamicObject receiver) {
       return Double.POSITIVE_INFINITY;
     }
   }

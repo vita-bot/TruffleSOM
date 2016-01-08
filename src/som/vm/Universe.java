@@ -34,6 +34,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
@@ -92,11 +93,17 @@ public final class Universe {
 
   public static void main(final String[] arguments) {
     Value returnCode = eval(arguments);
-    Object o = returnCode.get();
-    if (o instanceof SObject) {
-      System.exit(0);
-    } else {
-      System.exit(returnCode.as(Integer.class));
+
+    try {
+      int code = returnCode.as(Integer.class);
+      System.exit(code);
+    } catch (ClassCastException e) {
+      try {
+        returnCode.as(DynamicObject.class);
+        System.exit(0);
+      } catch (ClassCastException e2) {
+        System.exit(-1);
+      }
     }
   }
 
@@ -124,13 +131,19 @@ public final class Universe {
     this.symbolTable = new HashMap<>();
     this.alreadyInitialized = false;
 
-    this.blockClasses = new SClass[4];
+    this.blockClasses = new DynamicObject[4];
+
+    this.superclass = symbolFor("superclass");
+    this.name = symbolFor("name");
+    this.instanceFields = symbolFor("instanceFields");
+    this.instanceInvokables = symbolFor("instanceInvokables");
+
+    this.sclass = new SClass(this);
 
     // Allocate the Metaclass classes
     metaclassClass = newMetaclassClass();
 
     // Allocate the rest of the system classes
-
     objectClass = newSystemClass();
     nilClass = newSystemClass();
     classClass = newSystemClass();
@@ -142,6 +155,8 @@ public final class Universe {
     stringClass = newSystemClass();
     doubleClass = newSystemClass();
     booleanClass = newSystemClass();
+    trueClass = newSystemClass();
+    falseClass = newSystemClass();
   }
 
   public static final class SomExit extends ThreadDeath {
@@ -301,10 +316,11 @@ public final class Universe {
   public Object interpret(final String className, final String selector) {
     initializeObjectSystem();
 
-    SClass clazz = loadClass(symbolFor(className));
+    DynamicObject clazz = loadClass(symbolFor(className));
 
     // Lookup the initialize invokable on the system class
-    SInvokable initialize = clazz.getSOMClass(this).lookupInvokable(symbolFor(selector));
+    SInvokable initialize = sclass.lookupInvokable(SObject.getSOMClass(clazz),
+        symbolFor(selector));
     return initialize.invoke(new Object[] {clazz});
   }
 
@@ -318,7 +334,7 @@ public final class Universe {
     }
 
     // Lookup the initialize invokable on the system class
-    SInvokable initialize = systemClass.lookupInvokable(symbolFor("initialize:"));
+    SInvokable initialize = sclass.lookupInvokable(systemClass, symbolFor("initialize:"));
 
     return initialize.invoke(new Object[] {systemObject,
         SArray.create(arguments)});
@@ -333,10 +349,10 @@ public final class Universe {
     }
 
     // Allocate the nil object
-    SObject nilObject = Nil.nilObject;
+    DynamicObject nilObject = Nil.nilObject;
 
     // Setup the class reference for the nil object
-    nilObject.setClass(nilClass);
+    SObject.internalSetNilClass(nilObject, nilClass);
 
     // Initialize the system classes.
     initializeSystemClass(objectClass, null, "Object");
@@ -351,9 +367,6 @@ public final class Universe {
     initializeSystemClass(primitiveClass, objectClass, "Primitive");
     initializeSystemClass(doubleClass, objectClass, "Double");
     initializeSystemClass(booleanClass, objectClass, "Boolean");
-
-    trueClass = newSystemClass();
-    falseClass = newSystemClass();
 
     initializeSystemClass(trueClass, booleanClass, "True");
     initializeSystemClass(falseClass, booleanClass, "False");
@@ -378,12 +391,12 @@ public final class Universe {
     blockClasses[0] = loadClass(symbolFor("Block"));
 
     // Setup the true and false objects
-    trueObject = newInstance(trueClass);
-    falseObject = newInstance(falseClass);
+    trueObject = SObject.create(trueClass);
+    falseObject = SObject.create(falseClass);
 
     // Load the system class and create an instance of it
     systemClass = loadClass(symbolFor("System"));
-    systemObject = newInstance(systemClass);
+    systemObject = SObject.create(systemClass);
 
     // Put special objects into the dictionary of globals
     setGlobal("nil", nilObject);
@@ -414,14 +427,14 @@ public final class Universe {
     return newSymbol(interned);
   }
 
-  public static SBlock newBlock(final SMethod method, final SClass blockClass,
-      final MaterializedFrame context) {
+  public static SBlock newBlock(final SMethod method,
+      final DynamicObject blockClass, final MaterializedFrame context) {
     return new SBlock(method, blockClass, context);
   }
 
   @TruffleBoundary
-  public SClass newClass(final SClass classClass) {
-    return new SClass(classClass);
+  public DynamicObject newClass(final DynamicObject classClass) {
+    return sclass.create(classClass);
   }
 
   @TruffleBoundary
@@ -435,18 +448,10 @@ public final class Universe {
     }
   }
 
-  public static SObject newInstance(final SClass instanceClass) {
-    return SObject.create(instanceClass);
-  }
-
   @TruffleBoundary
-  private static SClass newMetaclassClass() {
-    // Allocate the metaclass classes
-    SClass result = new SClass(0);
-    result.setClass(new SClass(0));
-
-    // Setup the metaclass hierarchy
-    result.getSOMClass(null).setClass(result);
+  private DynamicObject newMetaclassClass() {
+    DynamicObject result = sclass.createWithoutClass();
+    SClass.internalSetClass(result, sclass.create(result));
     return result;
   }
 
@@ -457,42 +462,35 @@ public final class Universe {
   }
 
   @TruffleBoundary
-  private SClass newSystemClass() {
-    // Allocate the new system class
-    SClass systemClass = new SClass(0);
-
-    // Setup the metaclass hierarchy
-    systemClass.setClass(new SClass(0));
-    systemClass.getSOMClass(this).setClass(metaclassClass);
-
-    // Return the freshly allocated system class
-    return systemClass;
+  private DynamicObject newSystemClass() {
+    return sclass.create(sclass.create(metaclassClass));
   }
 
-  private void initializeSystemClass(final SClass systemClass, final SClass superClass,
-      final String name) {
+  private void initializeSystemClass(final DynamicObject systemClass,
+      final DynamicObject superClass, final String name) {
     // Initialize the superclass hierarchy
     if (superClass != null) {
-      systemClass.setSuperClass(superClass);
-      systemClass.getSOMClass(this).setSuperClass(superClass.getSOMClass(this));
+      sclass.setSuperClass(systemClass, superClass);
+      sclass.setSuperClass(SObject.getSOMClass(systemClass), SObject.getSOMClass(superClass));
     } else {
-      systemClass.getSOMClass(this).setSuperClass(classClass);
+      sclass.setSuperClass(SObject.getSOMClass(systemClass), classClass);
     }
 
     // Initialize the array of instance fields
-    systemClass.setInstanceFields(SArray.create(new Object[0]));
-    systemClass.getSOMClass(this).setInstanceFields(SArray.create(new Object[0]));
+    sclass.setInstanceFields(systemClass, SArray.create(new Object[0]));
+    sclass.setInstanceFields(SObject.getSOMClass(systemClass), SArray.create(new Object[0]));
 
     // Initialize the array of instance invokables
-    systemClass.setInstanceInvokables(SArray.create(new Object[0]));
-    systemClass.getSOMClass(this).setInstanceInvokables(SArray.create(new Object[0]));
+    sclass.setInstanceInvokables(systemClass, SArray.create(new Object[0]));
+    sclass.setInstanceInvokables(SObject.getSOMClass(systemClass),
+        SArray.create(new Object[0]));
 
     // Initialize the name of the system class
-    systemClass.setName(symbolFor(name));
-    systemClass.getSOMClass(this).setName(symbolFor(name + " class"));
+    sclass.setName(systemClass, symbolFor(name));
+    sclass.setName(SObject.getSOMClass(systemClass), symbolFor(name + " class"));
 
     // Insert the system class into the dictionary of globals
-    setGlobal(systemClass.getName(), systemClass);
+    setGlobal(sclass.getName(systemClass), systemClass);
   }
 
   @TruffleBoundary
@@ -529,8 +527,8 @@ public final class Universe {
     }
   }
 
-  public SClass getBlockClass(final int numberOfArguments) {
-    SClass result = blockClasses[numberOfArguments];
+  public DynamicObject getBlockClass(final int numberOfArguments) {
+    DynamicObject result = blockClasses[numberOfArguments];
     assert result != null || numberOfArguments == 0;
     return result;
   }
@@ -543,10 +541,10 @@ public final class Universe {
     assert getGlobal(name) == null;
 
     // Get the block class for blocks with the given number of arguments
-    SClass result = loadClass(name, null);
+    DynamicObject result = loadClass(name, null);
 
     // Add the appropriate value primitive to the block class
-    result.addInstancePrimitive(SBlock.getEvaluationPrimitive(
+    sclass.addInstancePrimitive(result, SBlock.getEvaluationPrimitive(
         numberOfArguments, this, result), true);
 
     // Insert the block class into the dictionary of globals
@@ -556,9 +554,9 @@ public final class Universe {
   }
 
   @TruffleBoundary
-  public SClass loadClass(final SSymbol name) {
+  public DynamicObject loadClass(final SSymbol name) {
     // Check if the requested class is already in the dictionary of globals
-    SClass result = (SClass) getGlobal(name);
+    DynamicObject result = (DynamicObject) getGlobal(name);
     if (result != null) {
       return result;
     }
@@ -571,25 +569,25 @@ public final class Universe {
     return result;
   }
 
-  private void loadPrimitives(final SClass result, final boolean isSystemClass) {
+  private void loadPrimitives(final DynamicObject result, final boolean isSystemClass) {
     if (result == null) {
       return;
     }
 
     // Load primitives if class defines them, or try to load optional
     // primitives defined for system classes.
-    if (result.hasPrimitives() || isSystemClass) {
-      result.loadPrimitives(!isSystemClass, this);
+    if (sclass.hasPrimitives(result) || isSystemClass) {
+      sclass.loadPrimitives(result, !isSystemClass);
     }
   }
 
   @TruffleBoundary
-  private void loadSystemClass(final SClass systemClass) {
+  private void loadSystemClass(final DynamicObject systemClass) {
     // Load the system class
-    SClass result = loadClass(systemClass.getName(), systemClass);
+    DynamicObject result = loadClass(sclass.getName(systemClass), systemClass);
 
     if (result == null) {
-      throw new IllegalStateException(systemClass.getName().getString()
+      throw new IllegalStateException(sclass.getName(systemClass).getString()
           + " class could not be loaded. "
           + "It is likely that the class path has not been initialized properly. "
           + "Please set system property 'system.class.path' or "
@@ -600,16 +598,16 @@ public final class Universe {
   }
 
   @TruffleBoundary
-  private SClass loadClass(final SSymbol name, final SClass systemClass) {
+  private DynamicObject loadClass(final SSymbol name, final DynamicObject systemClass) {
     // Try loading the class from all different paths
     for (String cpEntry : classPath) {
       try {
         // Load the class from a file and return the loaded class
-        SClass result = som.compiler.SourcecodeCompiler.compileClass(cpEntry,
+        DynamicObject result = som.compiler.SourcecodeCompiler.compileClass(cpEntry,
             name.getString(), systemClass, this);
         if (printAST) {
-          Disassembler.dump(result.getSOMClass(this));
-          Disassembler.dump(result);
+          Disassembler.dump(SObject.getSOMClass(result), sclass);
+          Disassembler.dump(result, sclass);
         }
         return result;
 
@@ -623,12 +621,12 @@ public final class Universe {
   }
 
   @TruffleBoundary
-  public SClass loadShellClass(final String stmt) throws IOException {
+  public DynamicObject loadShellClass(final String stmt) throws IOException {
     // Load the class from a stream and return the loaded class
-    SClass result = som.compiler.SourcecodeCompiler.compileClass(stmt, null,
-        this);
+    DynamicObject result = som.compiler.SourcecodeCompiler.compileClass(stmt,
+        null, this);
     if (printAST) {
-      Disassembler.dump(result);
+      Disassembler.dump(result, sclass);
     }
     return result;
   }
@@ -675,52 +673,60 @@ public final class Universe {
     // Checkstyle: resume
   }
 
-  public SObject getTrueObject() {
+  public DynamicObject getTrueObject() {
     return trueObject;
   }
 
-  public SObject getFalseObject() {
+  public DynamicObject getFalseObject() {
     return falseObject;
   }
 
-  public SObject getSystemObject() {
+  public DynamicObject getSystemObject() {
     return systemObject;
   }
 
-  public SClass getTrueClass() {
+  public DynamicObject getTrueClass() {
     return trueClass;
   }
 
-  public SClass getFalseClass() {
+  public DynamicObject getFalseClass() {
     return falseClass;
   }
 
-  public SClass getSystemClass() {
+  public DynamicObject getSystemClass() {
     return systemClass;
   }
 
-  public final SClass objectClass;
-  public final SClass classClass;
-  public final SClass metaclassClass;
+  public final SClass sclass;
 
-  public final SClass nilClass;
-  public final SClass integerClass;
-  public final SClass arrayClass;
-  public final SClass methodClass;
-  public final SClass symbolClass;
-  public final SClass primitiveClass;
-  public final SClass stringClass;
-  public final SClass doubleClass;
+  public final SSymbol superclass;
+  public final SSymbol name;
+  public final SSymbol instanceFields;
+  public final SSymbol instanceInvokables;
 
-  public final SClass booleanClass;
+  public final DynamicObject objectClass;
+  public final DynamicObject classClass;
+  public final DynamicObject metaclassClass;
 
-  @CompilationFinal private SObject trueObject;
-  @CompilationFinal private SObject falseObject;
-  @CompilationFinal private SObject systemObject;
+  public final DynamicObject nilClass;
+  public final DynamicObject integerClass;
+  public final DynamicObject arrayClass;
+  public final DynamicObject methodClass;
+  public final DynamicObject symbolClass;
+  public final DynamicObject primitiveClass;
+  public final DynamicObject stringClass;
+  public final DynamicObject doubleClass;
 
-  @CompilationFinal private SClass trueClass;
-  @CompilationFinal private SClass falseClass;
-  @CompilationFinal private SClass systemClass;
+  public final DynamicObject booleanClass;
+
+  @CompilationFinal private DynamicObject trueObject;
+  @CompilationFinal private DynamicObject falseObject;
+  @CompilationFinal private DynamicObject systemObject;
+
+  private DynamicObject trueClass;
+  private DynamicObject falseClass;
+
+  @CompilationFinal private DynamicObject systemClass;
 
   private final HashMap<SSymbol, Association> globals;
 
@@ -732,7 +738,7 @@ public final class Universe {
   private final HashMap<String, SSymbol> symbolTable;
 
   // Optimizations
-  @CompilationFinal(dimensions = 1) private final SClass[] blockClasses;
+  @CompilationFinal(dimensions = 1) private final DynamicObject[] blockClasses;
 
   // Latest instance
   // WARNING: this is problematic with multiple interpreters in the same VM...

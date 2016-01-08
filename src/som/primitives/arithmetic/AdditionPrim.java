@@ -2,15 +2,20 @@ package som.primitives.arithmetic;
 
 import java.math.BigInteger;
 
+import com.oracle.truffle.api.ExactMath;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateNodeFactory;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.object.DynamicObject;
+
+import som.interpreter.SomLanguage;
 import som.vmobjects.SClass;
 import som.vmobjects.SSymbol;
 
-import com.oracle.truffle.api.ExactMath;
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.Specialization;
-
 
 @GenerateNodeFactory
+@ImportStatic({SClass.class, SomLanguage.class})
 public abstract class AdditionPrim extends ArithmeticPrim {
   @Specialization(rewriteOn = ArithmeticException.class)
   public final long doLong(final long left, final long argument) {
@@ -68,9 +73,11 @@ public abstract class AdditionPrim extends ArithmeticPrim {
     return doDouble(left, (double) right);
   }
 
-  @Specialization
-  public final String doString(final String left, final SClass right) {
-    return left + right.getName().getString();
+  @Specialization(guards = "isSClass(right)")
+  public final String doString(final String left, final DynamicObject right,
+      @Cached("getCurrentContext().sclass") final SClass sclass) {
+
+    return left + sclass.getName(right).getString();
   }
 
   @Specialization

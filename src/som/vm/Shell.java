@@ -28,8 +28,9 @@ package som.vm;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
+import com.oracle.truffle.api.object.DynamicObject;
+
 import som.vm.constants.Nil;
-import som.vmobjects.SClass;
 import som.vmobjects.SInvokable;
 import som.vmobjects.SObject;
 
@@ -46,8 +47,8 @@ public class Shell {
     BufferedReader in;
     String stmt;
     int counter;
-    SClass myClass;
-    SObject myObject;
+    DynamicObject myClass;
+    DynamicObject myObject;
     Object it;
 
     counter = 0;
@@ -76,10 +77,11 @@ public class Shell {
         // If success
         if (myClass != null) {
           // Create and push a new instance of our class on the stack
-          myObject = Universe.newInstance(myClass);
+          myObject = SObject.create(myClass);
 
           // Lookup the run: method
-          SInvokable shellMethod = myClass.lookupInvokable(universe.symbolFor("run:"));
+          SInvokable shellMethod = universe.sclass.lookupInvokable(
+              myClass, universe.symbolFor("run:"));
 
           // Invoke the run method
           it = shellMethod.invoke(new Object[] {myObject, it});

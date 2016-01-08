@@ -3,6 +3,7 @@ package som.interpreter.nodes.literals;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
 
 import som.compiler.MethodGenerationContext;
@@ -15,14 +16,13 @@ import som.interpreter.SplitterForLexicallyEmbeddedCode;
 import som.interpreter.nodes.ExpressionNode;
 import som.vm.Universe;
 import som.vmobjects.SBlock;
-import som.vmobjects.SClass;
 import som.vmobjects.SInvokable.SMethod;
 
 
 public class BlockNode extends LiteralNode {
 
-  protected final SMethod            blockMethod;
-  @CompilationFinal protected SClass blockClass;
+  protected final SMethod                   blockMethod;
+  @CompilationFinal protected DynamicObject blockClass;
 
   protected final Universe universe;
 

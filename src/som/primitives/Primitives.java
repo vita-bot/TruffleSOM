@@ -27,6 +27,7 @@ package som.primitives;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.object.DynamicObject;
 
 import som.compiler.MethodGenerationContext;
 import som.interpreter.Primitive;
@@ -37,16 +38,16 @@ import som.primitives.MethodPrimsFactory.InvokeOnPrimFactory;
 import som.primitives.arrays.PutAllNodeFactory;
 import som.primitives.arrays.ToArgumentsArrayNodeGen;
 import som.vm.Universe;
-import som.vmobjects.SClass;
 import som.vmobjects.SInvokable;
 import som.vmobjects.SInvokable.SMethod;
+import som.vmobjects.SObject;
 import som.vmobjects.SSymbol;
 
 
 public abstract class Primitives {
 
   protected final Universe universe;
-  protected SClass         holder;
+  protected DynamicObject  holder;
   protected final boolean  displayWarning;
 
   public Primitives(final boolean displayWarning, final Universe universe) {
@@ -54,7 +55,7 @@ public abstract class Primitives {
     this.displayWarning = displayWarning;
   }
 
-  public final void installPrimitivesIn(final SClass value) {
+  public final void installPrimitivesIn(final DynamicObject value) {
     holder = value;
 
     // Install the primitives from this primitives class
@@ -65,7 +66,7 @@ public abstract class Primitives {
 
   public static SInvokable constructPrimitive(final SSymbol signature,
       final NodeFactory<? extends ExpressionNode> nodeFactory,
-      final Universe universe, final SClass holder) {
+      final Universe universe, final DynamicObject holder) {
     CompilerAsserts.neverPartOfCompilation();
     int numArgs = signature.getNumberOfSignatureArguments();
 
@@ -149,7 +150,7 @@ public abstract class Primitives {
     SInvokable prim = constructPrimitive(signature, nodeFactory, universe, holder);
 
     // Install the given primitive as an instance primitive in the holder class
-    holder.addInstancePrimitive(prim, displayWarning);
+    universe.sclass.addInstancePrimitive(holder, prim, displayWarning);
   }
 
   protected final void installClassPrimitive(final String selector,
@@ -159,7 +160,7 @@ public abstract class Primitives {
 
     // Install the given primitive as an instance primitive in the class of
     // the holder class
-    holder.getSOMClass(universe).addInstancePrimitive(prim, displayWarning);
+    universe.sclass.addInstancePrimitive(SObject.getSOMClass(holder), prim, displayWarning);
   }
 
   public static SInvokable getEmptyPrimitive(final String selector,

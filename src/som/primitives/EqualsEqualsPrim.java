@@ -4,21 +4,21 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.object.DynamicObject;
 
 import som.interpreter.nodes.nary.BinaryExpressionNode;
 import som.vm.Universe;
 import som.vmobjects.SArray;
 import som.vmobjects.SBlock;
 import som.vmobjects.SInvokable;
-import som.vmobjects.SObject;
 import som.vmobjects.SSymbol;
 
 
 @GenerateNodeFactory
 public abstract class EqualsEqualsPrim extends BinaryExpressionNode {
 
-  private final SObject trueObject;
-  private final SObject falseObject;
+  private final DynamicObject trueObject;
+  private final DynamicObject falseObject;
 
   public EqualsEqualsPrim(final Universe universe) {
     this.trueObject = universe.getTrueObject();
@@ -31,7 +31,7 @@ public abstract class EqualsEqualsPrim extends BinaryExpressionNode {
   }
 
   @Specialization
-  public final boolean doBoolean(final boolean left, final SObject right) {
+  public final boolean doBoolean(final boolean left, final DynamicObject right) {
     return (left && trueObject == right) ||
         (!left && falseObject == right);
   }
@@ -77,7 +77,7 @@ public abstract class EqualsEqualsPrim extends BinaryExpressionNode {
   }
 
   @Specialization
-  public final boolean doSObject(final SObject left, final Object right) {
+  public final boolean doSObject(final DynamicObject left, final Object right) {
     return left == right;
   }
 
@@ -107,7 +107,7 @@ public abstract class EqualsEqualsPrim extends BinaryExpressionNode {
   }
 
   @Specialization
-  public final boolean doLong(final long left, final SObject right) {
+  public final boolean doLong(final long left, final DynamicObject right) {
     return false;
   }
 
@@ -117,7 +117,7 @@ public abstract class EqualsEqualsPrim extends BinaryExpressionNode {
   }
 
   @Specialization
-  public final boolean doString(final String receiver, final SObject argument) {
+  public final boolean doString(final String receiver, final DynamicObject argument) {
     return false;
   }
 }

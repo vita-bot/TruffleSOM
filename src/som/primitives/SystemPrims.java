@@ -2,14 +2,13 @@ package som.primitives;
 
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.object.DynamicObject;
 
 import som.interpreter.nodes.nary.BinaryExpressionNode;
 import som.interpreter.nodes.nary.TernaryExpressionNode;
 import som.interpreter.nodes.nary.UnaryExpressionNode;
 import som.vm.Universe;
 import som.vm.constants.Nil;
-import som.vmobjects.SClass;
-import som.vmobjects.SObject;
 import som.vmobjects.SSymbol;
 
 
@@ -40,8 +39,8 @@ public final class SystemPrims {
     }
 
     @Specialization(guards = "receiver == universe.getSystemObject()")
-    public final Object doSObject(final SObject receiver, final SSymbol argument) {
-      SClass result = universe.loadClass(argument);
+    public final Object doSObject(final DynamicObject receiver, final SSymbol argument) {
+      DynamicObject result = universe.loadClass(argument);
       return result != null ? result : Nil.nilObject;
     }
   }
@@ -52,7 +51,7 @@ public final class SystemPrims {
     }
 
     @Specialization(guards = "receiver == universe.getSystemObject()")
-    public final Object doSObject(final SObject receiver, final long error) {
+    public final Object doSObject(final DynamicObject receiver, final long error) {
       universe.exit((int) error);
       return receiver;
     }
@@ -67,7 +66,7 @@ public final class SystemPrims {
     }
 
     @Specialization(guards = "receiver == universe.getSystemObject()")
-    public final Object doSObject(final SObject receiver, final SSymbol global,
+    public final Object doSObject(final DynamicObject receiver, final SSymbol global,
         final Object value) {
       universe.setGlobal(global, value);
       return value;
@@ -80,13 +79,13 @@ public final class SystemPrims {
     }
 
     @Specialization(guards = "receiver == universe.getSystemObject()")
-    public final Object doSObject(final SObject receiver, final String argument) {
+    public final Object doSObject(final DynamicObject receiver, final String argument) {
       Universe.print(argument);
       return receiver;
     }
 
     @Specialization(guards = "receiver == universe.getSystemObject()")
-    public final Object doSObject(final SObject receiver, final SSymbol argument) {
+    public final Object doSObject(final DynamicObject receiver, final SSymbol argument) {
       return doSObject(receiver, argument.getString());
     }
   }
@@ -98,7 +97,7 @@ public final class SystemPrims {
     }
 
     @Specialization(guards = "receiver == universe.getSystemObject()")
-    public final Object doSObject(final SObject receiver) {
+    public final Object doSObject(final DynamicObject receiver) {
       Universe.println();
       return receiver;
     }
@@ -111,7 +110,7 @@ public final class SystemPrims {
     }
 
     @Specialization(guards = "receiver == universe.getSystemObject()")
-    public final Object doSObject(final SObject receiver) {
+    public final Object doSObject(final DynamicObject receiver) {
       System.gc();
       return true;
     }
@@ -124,7 +123,7 @@ public final class SystemPrims {
     }
 
     @Specialization(guards = "receiver == universe.getSystemObject()")
-    public final long doSObject(final SObject receiver) {
+    public final long doSObject(final DynamicObject receiver) {
       return System.currentTimeMillis() - startTime;
     }
   }
@@ -136,7 +135,7 @@ public final class SystemPrims {
     }
 
     @Specialization(guards = "receiver == universe.getSystemObject()")
-    public final long doSObject(final SObject receiver) {
+    public final long doSObject(final DynamicObject receiver) {
       return System.nanoTime() / 1000L - startMicroTime;
     }
   }

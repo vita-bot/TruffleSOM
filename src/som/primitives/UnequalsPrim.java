@@ -4,18 +4,18 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.object.DynamicObject;
 
 import som.interpreter.nodes.nary.BinaryExpressionNode;
 import som.vm.Universe;
-import som.vmobjects.SObject;
 import som.vmobjects.SSymbol;
 
 
 @GenerateNodeFactory
 public abstract class UnequalsPrim extends BinaryExpressionNode {
 
-  private final SObject trueObject;
-  private final SObject falseObject;
+  private final DynamicObject trueObject;
+  private final DynamicObject falseObject;
 
   public UnequalsPrim(final Universe universe) {
     this.trueObject = universe.getTrueObject();
@@ -28,7 +28,7 @@ public abstract class UnequalsPrim extends BinaryExpressionNode {
   }
 
   @Specialization
-  public final boolean doBoolean(final boolean left, final SObject right) {
+  public final boolean doBoolean(final boolean left, final DynamicObject right) {
     return (left && right != trueObject) ||
         (!left && right != falseObject);
   }
@@ -84,7 +84,7 @@ public abstract class UnequalsPrim extends BinaryExpressionNode {
   }
 
   @Specialization
-  public final boolean doLong(final long left, final SObject right) {
+  public final boolean doLong(final long left, final DynamicObject right) {
     return true;
   }
 
@@ -99,7 +99,7 @@ public abstract class UnequalsPrim extends BinaryExpressionNode {
   }
 
   @Specialization
-  public final boolean doString(final String receiver, final SObject argument) {
+  public final boolean doString(final String receiver, final DynamicObject argument) {
     return true;
   }
 
@@ -109,7 +109,7 @@ public abstract class UnequalsPrim extends BinaryExpressionNode {
   }
 
   @Specialization
-  public final boolean doSSymbol(final SSymbol receiver, final SObject argument) {
+  public final boolean doSSymbol(final SSymbol receiver, final DynamicObject argument) {
     return true;
   }
 }

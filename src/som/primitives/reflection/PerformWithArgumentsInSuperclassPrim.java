@@ -6,9 +6,10 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.object.DynamicObject;
 
 import som.interpreter.nodes.nary.QuaternaryExpressionNode;
-import som.vmobjects.SClass;
+import som.vm.Universe;
 import som.vmobjects.SInvokable;
 import som.vmobjects.SSymbol;
 
@@ -16,20 +17,21 @@ import som.vmobjects.SSymbol;
 @GenerateNodeFactory
 public abstract class PerformWithArgumentsInSuperclassPrim extends QuaternaryExpressionNode {
   @Child private IndirectCallNode call;
+  private final Universe          universe;
 
-  public PerformWithArgumentsInSuperclassPrim() {
+  public PerformWithArgumentsInSuperclassPrim(final Universe universe) {
     super(null);
+    this.universe = universe;
     call = Truffle.getRuntime().createIndirectCallNode();
   }
 
   @Specialization
   public final Object doSAbstractObject(final Object receiver, final SSymbol selector,
-      final Object[] argArr, final SClass clazz) {
+      final Object[] argArr, final DynamicObject clazz) {
     CompilerAsserts.neverPartOfCompilation(
         "PerformWithArgumentsInSuperclassPrim.doSAbstractObject()");
-    SInvokable invokable = clazz.lookupInvokable(selector);
-    return call.call(invokable.getCallTarget(),
-        mergeReceiverWithArguments(receiver, argArr));
+    SInvokable invokable = universe.sclass.lookupInvokable(clazz, selector);
+    return call.call(invokable.getCallTarget(), mergeReceiverWithArguments(receiver, argArr));
   }
 
   // TODO: remove duplicated code, also in symbol dispatch, ideally removing by optimizing this

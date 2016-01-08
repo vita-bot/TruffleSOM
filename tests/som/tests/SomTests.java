@@ -30,9 +30,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 
-import som.vm.Universe;
+import som.interpreter.SomLanguage;
+import som.vmobjects.SClass;
 import som.vmobjects.SObject;
 
 
@@ -80,12 +84,19 @@ public class SomTests {
 
   @Test
   public void testSomeTest() {
-    Value returnCode = Universe.eval(
+    Builder builder = PolyglotEngine.newBuilder();
+    builder.config(SomLanguage.MIME_TYPE, SomLanguage.VM_ARGS,
         new String[] {"-cp", "Smalltalk", "TestSuite/TestHarness.som", testName});
+
+    PolyglotEngine engine = builder.build();
+    SClass sclass = engine.findGlobalSymbol(SomLanguage.UNIVERSE).as(SClass.class);
+
+    Value returnCode = engine.eval(SomLanguage.START);
+
     Object obj = returnCode.get();
-    if (obj instanceof SObject) {
+    if (obj instanceof DynamicObject) {
       assertEquals("System",
-          ((SObject) obj).getSOMClass(null).getName().getString());
+          sclass.getName(SObject.getSOMClass((DynamicObject) obj)).getString());
     } else {
       assertEquals(0, (int) returnCode.as(Integer.class));
     }

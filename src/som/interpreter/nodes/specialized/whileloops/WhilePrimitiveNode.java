@@ -3,11 +3,11 @@ package som.interpreter.nodes.specialized.whileloops;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.object.DynamicObject;
 
 import som.interpreter.nodes.nary.BinaryExpressionNode;
 import som.vm.Universe;
 import som.vmobjects.SBlock;
-import som.vmobjects.SObject;
 
 
 @GenerateNodeFactory
@@ -26,9 +26,9 @@ public abstract class WhilePrimitiveNode extends BinaryExpressionNode {
   }
 
   @Specialization
-  protected SObject doWhileConditionally(final VirtualFrame frame,
+  protected DynamicObject doWhileConditionally(final VirtualFrame frame,
       final SBlock loopCondition, final SBlock loopBody) {
-    return (SObject) whileNode.executeEvaluated(frame, loopCondition, loopBody);
+    return (DynamicObject) whileNode.executeEvaluated(frame, loopCondition, loopBody);
   }
 
   public abstract static class WhileTruePrimitiveNode extends WhilePrimitiveNode {

@@ -2,6 +2,7 @@ package som.vmobjects;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
 import som.vm.Universe;
@@ -12,8 +13,6 @@ import som.vm.constants.Nil;
  * SArrays are implemented using a Strategy-like approach.
  * The SArray objects are 'tagged' with a type, and the strategy behavior
  * is implemented directly in the AST nodes.
- *
- * @author smarr
  */
 public final class SArray extends SAbstractObject {
   public static final int FIRST_IDX = 0;
@@ -339,7 +338,7 @@ public final class SArray extends SAbstractObject {
   }
 
   @Override
-  public SClass getSOMClass(final Universe universe) {
+  public DynamicObject getSOMClass(final Universe universe) {
     return universe.arrayClass;
   }
 }

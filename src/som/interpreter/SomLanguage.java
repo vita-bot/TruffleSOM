@@ -28,6 +28,7 @@ public class SomLanguage extends TruffleLanguage<Universe> {
   public static final String CLASS_PATH    = "class-path";
   public static final String TEST_CLASS    = "test-class";
   public static final String TEST_SELECTOR = "test-selector";
+  public static final String UNIVERSE      = "universe";
 
   @CompilationFinal private Universe                 universe;
   @CompilationFinal(dimensions = 1) private String[] args;
@@ -49,6 +50,7 @@ public class SomLanguage extends TruffleLanguage<Universe> {
     testSelector = (String) config.get(TEST_SELECTOR);
 
     universe = new Universe(this);
+    env.exportSymbol(UNIVERSE, universe);
     return universe;
   }
 

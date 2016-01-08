@@ -4,6 +4,7 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
 import som.interpreter.nodes.nary.BinaryExpressionNode;
@@ -11,7 +12,6 @@ import som.interpreter.nodes.nary.UnaryExpressionNode;
 import som.primitives.arithmetic.ArithmeticPrim;
 import som.vm.Universe;
 import som.vmobjects.SArray;
-import som.vmobjects.SClass;
 import som.vmobjects.SSymbol;
 
 
@@ -43,19 +43,19 @@ public abstract class IntegerPrims {
 
   @GenerateNodeFactory
   public abstract static class FromStringPrim extends ArithmeticPrim {
-    protected final SClass integerClass;
+    protected final DynamicObject integerClass;
 
     public FromStringPrim(final Universe universe) {
       this.integerClass = universe.integerClass;
     }
 
     @Specialization(guards = "receiver == integerClass")
-    public final Object doSClass(final SClass receiver, final String argument) {
+    public final Object doSClass(final DynamicObject receiver, final String argument) {
       return Long.parseLong(argument);
     }
 
     @Specialization(guards = "receiver == integerClass")
-    public final Object doSClass(final SClass receiver, final SSymbol argument) {
+    public final Object doSClass(final DynamicObject receiver, final SSymbol argument) {
       return Long.parseLong(argument.getString());
     }
   }
