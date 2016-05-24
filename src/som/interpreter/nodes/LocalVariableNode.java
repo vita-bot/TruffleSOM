@@ -64,26 +64,38 @@ public abstract class LocalVariableNode extends ExpressionNode {
       return frame.isObject(slot);
     }
 
-    @Specialization(guards = {"isBoolean(frame)"}, rewriteOn = {FrameSlotTypeException.class})
+    @Specialization(guards = {"isInitialized(frame)", "isBoolean(frame)"},
+        rewriteOn = {FrameSlotTypeException.class})
     public final boolean doBoolean(final VirtualFrame frame) throws FrameSlotTypeException {
       return frame.getBoolean(slot);
     }
 
-    @Specialization(guards = {"isLong(frame)"}, rewriteOn = {FrameSlotTypeException.class})
+    @Specialization(guards = {"isInitialized(frame)", "isLong(frame)"},
+        rewriteOn = {FrameSlotTypeException.class})
     public final long doLong(final VirtualFrame frame) throws FrameSlotTypeException {
       return frame.getLong(slot);
     }
 
-    @Specialization(guards = {"isDouble(frame)"}, rewriteOn = {FrameSlotTypeException.class})
+    @Specialization(guards = {"isInitialized(frame)", "isDouble(frame)"},
+        rewriteOn = {FrameSlotTypeException.class})
     public final double doDouble(final VirtualFrame frame) throws FrameSlotTypeException {
       return frame.getDouble(slot);
     }
 
-    @Specialization(guards = {"isObject(frame)"},
-        replaces = {"doBoolean", "doLong", "doDouble"},
+    @Specialization(guards = {"isInitialized(frame)", "isObject(frame)"},
         rewriteOn = {FrameSlotTypeException.class})
     public final Object doObject(final VirtualFrame frame) throws FrameSlotTypeException {
       return frame.getObject(slot);
+    }
+
+    // @Generic
+    // public final Object doGeneric(final VirtualFrame frame) {
+    // assert isInitialized();
+    // return FrameUtil.getObjectSafe(frame, slot);
+    // }
+
+    protected final boolean isInitialized(final VirtualFrame frame) {
+      return slot.getKind() != FrameSlotKind.Illegal;
     }
 
     protected final boolean isUninitialized(final VirtualFrame frame) {
@@ -108,19 +120,19 @@ public abstract class LocalVariableNode extends ExpressionNode {
 
     public abstract ExpressionNode getExp();
 
-    @Specialization(guards = "isBoolKind(expValue)")
+    @Specialization(guards = "isBoolKind(frame)")
     public final boolean writeBoolean(final VirtualFrame frame, final boolean expValue) {
       frame.setBoolean(slot, expValue);
       return expValue;
     }
 
-    @Specialization(guards = "isLongKind(expValue)")
+    @Specialization(guards = "isLongKind(frame)")
     public final long writeLong(final VirtualFrame frame, final long expValue) {
       frame.setLong(slot, expValue);
       return expValue;
     }
 
-    @Specialization(guards = "isDoubleKind(expValue)")
+    @Specialization(guards = "isDoubleKind(frame)")
     public final double writeDouble(final VirtualFrame frame, final double expValue) {
       frame.setDouble(slot, expValue);
       return expValue;
@@ -133,9 +145,8 @@ public abstract class LocalVariableNode extends ExpressionNode {
       return expValue;
     }
 
-    // uses expValue to make sure guard is not converted to assertion
-    protected final boolean isBoolKind(final boolean expValue) {
-      if (slot.getKind() == FrameSlotKind.Boolean) {
+    protected final boolean isBoolKind(final VirtualFrame frame) {
+      if (frame.isBoolean(slot)) {
         return true;
       }
       if (slot.getKind() == FrameSlotKind.Illegal) {
@@ -145,9 +156,8 @@ public abstract class LocalVariableNode extends ExpressionNode {
       return false;
     }
 
-    // uses expValue to make sure guard is not converted to assertion
-    protected final boolean isLongKind(final long expValue) {
-      if (slot.getKind() == FrameSlotKind.Long) {
+    protected final boolean isLongKind(final VirtualFrame frame) {
+      if (frame.isLong(slot)) {
         return true;
       }
       if (slot.getKind() == FrameSlotKind.Illegal) {
@@ -157,9 +167,8 @@ public abstract class LocalVariableNode extends ExpressionNode {
       return false;
     }
 
-    // uses expValue to make sure guard is not converted to assertion
-    protected final boolean isDoubleKind(final double expValue) {
-      if (slot.getKind() == FrameSlotKind.Double) {
+    protected final boolean isDoubleKind(final VirtualFrame frame) {
+      if (frame.isDouble(slot)) {
         return true;
       }
       if (slot.getKind() == FrameSlotKind.Illegal) {
