@@ -27,8 +27,13 @@ package som.vmobjects;
 import java.lang.reflect.Constructor;
 import java.util.HashMap;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.ObjectType;
@@ -151,6 +156,22 @@ public final class SClass {
     @Override
     public String toString() {
       return "SClass";
+    }
+
+    @Override
+    public ForeignAccess getForeignAccessFactory(final DynamicObject obj) {
+      return ForeignAccess.create(new ForeignAccess.Factory() {
+
+        @Override
+        public boolean canHandle(final TruffleObject obj) {
+          return true;
+        }
+
+        @Override
+        public CallTarget accessMessage(final Message tree) {
+          throw UnsupportedMessageException.raise(tree);
+        }
+      });
     }
   }
 

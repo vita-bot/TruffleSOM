@@ -36,7 +36,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 
 import som.interpreter.SomLanguage;
-import som.vmobjects.SClass;
+import som.vm.Universe;
 import som.vmobjects.SObject;
 
 
@@ -89,14 +89,13 @@ public class SomTests {
         new String[] {"-cp", "Smalltalk", "TestSuite/TestHarness.som", testName});
 
     PolyglotEngine engine = builder.build();
-    SClass sclass = engine.findGlobalSymbol(SomLanguage.UNIVERSE).as(SClass.class);
-
     Value returnCode = engine.eval(SomLanguage.START);
 
-    Object obj = returnCode.get();
+    Universe universe = engine.findGlobalSymbol(SomLanguage.UNIVERSE).as(Universe.class);
+    Object obj = returnCode.as(DynamicObject.class);
     if (obj instanceof DynamicObject) {
       assertEquals("System",
-          sclass.getName(SObject.getSOMClass((DynamicObject) obj)).getString());
+          universe.sclass.getName(SObject.getSOMClass((DynamicObject) obj)).getString());
     } else {
       assertEquals(0, (int) returnCode.as(Integer.class));
     }

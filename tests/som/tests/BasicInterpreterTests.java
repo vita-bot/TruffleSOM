@@ -37,6 +37,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 
 import som.interpreter.SomLanguage;
+import som.vm.Universe;
 import som.vmobjects.SClass;
 import som.vmobjects.SSymbol;
 
@@ -167,8 +168,8 @@ public class BasicInterpreterTests {
 
     PolyglotEngine engine = builder.build();
     Value actualResult = engine.eval(SomLanguage.START);
-    SClass sclass = engine.findGlobalSymbol(SomLanguage.UNIVERSE).as(SClass.class);
+    Universe universe = engine.findGlobalSymbol(SomLanguage.UNIVERSE).as(Universe.class);
 
-    assertEqualsSOMValue(expectedResult, actualResult.as(Object.class), sclass);
+    assertEqualsSOMValue(expectedResult, actualResult.as(Object.class), universe.sclass);
   }
 }
